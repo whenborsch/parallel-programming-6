@@ -1,11 +1,3 @@
-/******************************************************************************
-
-                              Online C++ Compiler.
-               Code, Compile, Run and Debug C++ program online.
-Write your code in this editor and press "Run" button to compile and execute it.
-
-*******************************************************************************/
-
 #include <iostream>
 #include <thread>
 #include <mutex>
@@ -21,7 +13,7 @@ std::condition_variable bufferEmpty;
 
 void producer() {
     std::default_random_engine generator;
-    std::uniform_int_distribution<int> distribution(1, 100);
+    std::uniform_int_distribution<int> distribution(1, 1000);
 
     while (true) {
         std::unique_lock<std::mutex> lock(mtx);
@@ -31,6 +23,7 @@ void producer() {
             std::cout << "Produced: " << data << std::endl;
             lock.unlock();
             bufferEmpty.notify_one();
+	        std::this_thread::sleep_for(std::chrono::milliseconds(distribution(generator)));
         } else {
             lock.unlock();
             std::this_thread::sleep_for(std::chrono::seconds(1)); // Подождать некоторое время, если буфер полный
@@ -39,6 +32,9 @@ void producer() {
 }
 
 void consumer() {
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(1, 1000);
+
     while (true) {
         std::unique_lock<std::mutex> lock(mtx);
         bufferEmpty.wait(lock, []{ return !buffer.empty(); });
@@ -46,14 +42,17 @@ void consumer() {
         buffer.pop();
         lock.unlock();
         std::cout << "Consumed: " << data << std::endl;
+	    std::this_thread::sleep_for(std::chrono::milliseconds(distribution(generator)));
     }
 }
 
 int main() {
-    std::thread producerThread(producer);
+    std::thread producerThread1(producer);
+    std::thread producerThread2(producer);
     std::thread consumerThread(consumer);
 
-    producerThread.join();
+    producerThread1.join();
+    producerThread2.join();
     consumerThread.join();
 
     return 0;
